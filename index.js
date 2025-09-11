@@ -3,6 +3,7 @@ const admin = require('firebase-admin');
 const nodemailer = require('nodemailer');
 const cron = require('node-cron');
 const path = require('path');
+const express = require('express');
 
 // Inicializa Firebase Admin
 const serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
@@ -96,10 +97,21 @@ async function enviarCorreoVencido(responsableEmail, descripcion, fechaLimite, r
 }
 
 // Programa la tarea cada día
-cron.schedule('30 12 * * *', () => {
+cron.schedule('29 13 * * *', () => {
   console.log('Ejecutando revisión de reportes vencidos...');
   revisarYEnviarCorreos().catch(console.error);
 });
 
 // También puedes ejecutarlo manualmente al iniciar
 revisarYEnviarCorreos().catch(console.error);
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+  res.send('Reportes Mailer está corriendo.');
+});
+
+app.listen(PORT, () => {
+  console.log(`Servidor escuchando en el puerto ${PORT}`);
+});
