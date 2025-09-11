@@ -5,10 +5,10 @@ const cron = require('node-cron');
 const path = require('path');
 
 // Inicializa Firebase Admin
+const serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+
 admin.initializeApp({
-  credential: admin.credential.cert(
-    require(path.join(__dirname, 'serviceAccountKey.json'))
-  )
+  credential: admin.credential.cert(serviceAccount)
 });
 const db = admin.firestore();
 
