@@ -131,20 +131,20 @@ async function enviarCorreoVencido(responsableEmail, descripcion, fechaLimite, r
 }
 
 // Programa la tarea para cambiar estado
-cron.schedule('30 9 * * *', () => {
+cron.schedule('38 9 * * *', () => {
   console.log('Ejecutando actualización de estados de reportes vencidos...');
   actualizarEstadosVencidos().catch(console.error);
 });
 
 // Programa la tarea para enviar correos
-cron.schedule('32 9 * * *', () => {
+cron.schedule('40 9 * * *', () => {
   console.log('Ejecutando revisión de reportes vencidos para envío de correos...');
   revisarYEnviarCorreos().catch(console.error);
 });
 
 // También puedes ejecutarlas manualmente al iniciar (opcional)
-actualizarEstadosVencidos().catch(console.error);
-revisarYEnviarCorreos().catch(console.error);
+// actualizarEstadosVencidos().catch(console.error);
+// revisarYEnviarCorreos().catch(console.error);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
