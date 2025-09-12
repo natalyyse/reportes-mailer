@@ -116,12 +116,6 @@ cron.schedule('48 21 * * *', () => {
   revisarYEnviarCorreos().catch(console.error);
 });
 
-// Programa la tarea a las 2:00 PM todos los días
-cron.schedule('51 21 * * *', () => {
-  console.log('Ejecutando revisión de reportes vencidos...');
-  revisarYEnviarCorreos().catch(console.error);
-});
-
 // También puedes ejecutarlo manualmente al iniciar
 revisarYEnviarCorreos().catch(console.error);
 
