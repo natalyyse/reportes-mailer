@@ -111,7 +111,7 @@ async function enviarCorreoVencido(responsableEmail, descripcion, fechaLimite, r
 }
 
 // Programa la tarea a las 8:00 AM todos los días
-cron.schedule('48 21 * * *', () => {
+cron.schedule('30 22 * * *', () => {
   console.log('Ejecutando revisión de reportes vencidos...');
   revisarYEnviarCorreos().catch(console.error);
 });
