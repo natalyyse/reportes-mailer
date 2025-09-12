@@ -26,10 +26,8 @@ async function revisarYEnviarCorreos() {
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
 
-  // Trae solo los reportes con estado "Cerrado parcialmente"
-  const snapshot = await db.collection('reportes')
-    .where('estado', '==', 'Cerrado parcialmente')
-    .get();
+  // Trae todos los reportes
+  const snapshot = await db.collection('reportes').get();
 
   for (const doc of snapshot.docs) {
     const data = doc.data();
@@ -40,8 +38,15 @@ async function revisarYEnviarCorreos() {
     const [dia, mes, anio] = fechaLimiteStr.split('/');
     const fechaLimite = new Date(`${anio}-${mes}-${dia}T00:00:00`);
 
-    // Si la fecha límite ya pasó y no está marcado como notificado
-    if (hoy > fechaLimite && !data.notificadoVencido) {
+    // Si el estado es "Asignado" y notificadoVencido no es false, lo ponemos en false
+    if (data.estado === 'Asignado' && data.notificadoVencido !== false) {
+      await db.collection('reportes').doc(doc.id).update({ notificadoVencido: false });
+      console.log(`false para reporte ${doc.id} (estado Asignado)`);
+      continue; // No notificar si está asignado
+    }
+
+    // Si el estado es "Cerrado parcialmente" y la fecha límite ya pasó y no está notificado
+    if (data.estado === 'Cerrado parcialmente' && hoy > fechaLimite && !data.notificadoVencido) {
       await enviarCorreoVencido(
         data.responsable,
         data.descripcion,
@@ -58,9 +63,18 @@ async function revisarYEnviarCorreos() {
 // Función para enviar el correo
 async function enviarCorreoVencido(responsableEmail, descripcion, fechaLimite, reporteId, data) {
   const adminEmail = process.env.ADMIN_EMAIL;
-  const asunto = `Reporte vencido de "${data.tipo || 'Sin tipo'}"`;
+  const invisibleChar = '\u200B'; // carácter de espacio de ancho cero
 
-  // Función auxiliar para generar el cuerpo del correo según destinatario
+  // Inserta el invisibleChar entre cada letra del ID
+  const idInvisible = reporteId.split('').join(invisibleChar);
+
+  // Agrega un timestamp invisible para asegurar unicidad
+  const timestamp = Date.now().toString();
+  const timestampInvisible = timestamp.split('').join(invisibleChar);
+
+  // Asunto con ID y timestamp ocultos
+  const asunto = `Reporte vencido de "${data.tipo || 'Sin tipo'}"${invisibleChar}${idInvisible}${invisibleChar}${timestampInvisible}`;
+
   function generarCuerpoCorreo(destinatario) {
     const saludo = destinatario === 'admin' ? 'Estimado/a administrador,' : 'Estimado/a responsable,';
     return `
@@ -95,8 +109,14 @@ async function enviarCorreoVencido(responsableEmail, descripcion, fechaLimite, r
   });
 }
 
-// Programa la tarea cada día
-cron.schedule('30 12 * * *', () => {
+// Programa la tarea a las 8:00 AM todos los días
+cron.schedule('48 21 * * *', () => {
+  console.log('Ejecutando revisión de reportes vencidos...');
+  revisarYEnviarCorreos().catch(console.error);
+});
+
+// Programa la tarea a las 2:00 PM todos los días
+cron.schedule('51 21 * * *', () => {
   console.log('Ejecutando revisión de reportes vencidos...');
   revisarYEnviarCorreos().catch(console.error);
 });
