@@ -3,6 +3,7 @@ const admin = require('firebase-admin');
 const nodemailer = require('nodemailer');
 const cron = require('node-cron');
 const path = require('path');
+const express = require('express');
 
 // Inicializa Firebase Admin
 const serviceAccount = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
@@ -123,3 +124,14 @@ cron.schedule('51 21 * * *', () => {
 
 // También puedes ejecutarlo manualmente al iniciar
 revisarYEnviarCorreos().catch(console.error);
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get('/', (req, res) => {
+  res.send('Reportes Mailer está corriendo.');
+});
+
+app.listen(PORT, () => {
+  console.log(`Servidor escuchando en el puerto ${PORT}`);
+});
