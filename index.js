@@ -131,13 +131,13 @@ async function enviarCorreoVencido(responsableEmail, descripcion, fechaLimite, r
 }
 
 // Programa la tarea para cambiar estado
-cron.schedule('38 9 * * *', () => {
+cron.schedule('48 14 * * *', () => {
   console.log('Ejecutando actualización de estados de reportes vencidos...');
   actualizarEstadosVencidos().catch(console.error);
 });
 
 // Programa la tarea para enviar correos
-cron.schedule('39 9 * * *', () => {
+cron.schedule('50 14 * * *', () => {
   console.log('Ejecutando revisión de reportes vencidos para envío de correos...');
   revisarYEnviarCorreos().catch(console.error);
 });
