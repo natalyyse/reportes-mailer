@@ -22,12 +22,38 @@ const transporter = nodemailer.createTransport({
   }
 });
 
-// Función para buscar reportes vencidos y enviar correos
+// Cambia el estado de reportes vencidos a "Cerrado parcialmente" (a las 12:00)
+async function actualizarEstadosVencidos() {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  const snapshot = await db.collection('reportes').get();
+
+  for (const doc of snapshot.docs) {
+    const data = doc.data();
+    const fechaLimiteStr = data.fechaLimite;
+    if (!fechaLimiteStr) continue;
+
+    // Asume formato dd/MM/yyyy
+    const [dia, mes, anio] = fechaLimiteStr.split('/');
+    const fechaLimite = new Date(`${anio}-${mes}-${dia}T00:00:00`);
+
+    // Si el estado es "Asignado" y la fecha límite ya pasó, cambia a "Cerrado parcialmente"
+    if (data.estado === 'Asignado' && hoy > fechaLimite) {
+      await db.collection('reportes').doc(doc.id).update({ 
+        estado: 'Cerrado parcialmente',
+        notificadoVencido: false // para que luego notifique
+      });
+      console.log(`Estado cambiado a "Cerrado parcialmente" para reporte ${doc.id}`);
+    }
+  }
+}
+
+// Revisa y envía correos (a las 9:00)
 async function revisarYEnviarCorreos() {
   const hoy = new Date();
   hoy.setHours(0, 0, 0, 0);
 
-  // Trae todos los reportes
   const snapshot = await db.collection('reportes').get();
 
   for (const doc of snapshot.docs) {
@@ -64,17 +90,12 @@ async function revisarYEnviarCorreos() {
 // Función para enviar el correo
 async function enviarCorreoVencido(responsableEmail, descripcion, fechaLimite, reporteId, data) {
   const adminEmail = process.env.ADMIN_EMAIL;
-  const invisibleChar = '\u200B'; // carácter de espacio de ancho cero
-
-  // Inserta el invisibleChar entre cada letra del ID
-  const idInvisible = reporteId.split('').join(invisibleChar);
-
-  // Agrega un timestamp invisible para asegurar unicidad
-  const timestamp = Date.now().toString();
-  const timestampInvisible = timestamp.split('').join(invisibleChar);
-
-  // Asunto con ID y timestamp ocultos
-  const asunto = `Reporte vencido de "${data.tipo || 'Sin tipo'}"${invisibleChar}${idInvisible}${invisibleChar}${timestampInvisible}`;
+  
+  // Obtener los primeros tres caracteres del ID
+  const idAbreviado = reporteId.substring(0, 3);
+  
+  // Asunto: tipo de reporte - primeros tres caracteres del ID
+  const asunto = `Reporte vencido de "${data.tipo || 'Sin tipo'}" - ${idAbreviado}`;
 
   function generarCuerpoCorreo(destinatario) {
     const saludo = destinatario === 'admin' ? 'Estimado/a administrador,' : 'Estimado/a responsable,';
@@ -82,11 +103,10 @@ async function enviarCorreoVencido(responsableEmail, descripcion, fechaLimite, r
       <p>${saludo}</p>
       <p>El reporte con los siguientes datos ha vencido:</p>
       <ul>
-        <li><b>Nombre del reportante:</b> ${data.reportante || 'No especificado'}</li>
         <li><b>Descripción:</b> ${descripcion || 'No especificada'}</li>
-        <li><b>Fecha de asignación:</b> ${data.fechaAsignacion || 'No especificada'}</li>
-        <li><b>Fecha límite:</b> ${fechaLimite || 'No especificada'}</li>
         <li><b>Lugar:</b> ${data.lugar || 'No especificado'}</li>
+        <li><b>Fecha de asignación:</b> ${data.fechaAsignacion || 'No especificada'}</li>
+        <li><b>Fecha límite:</b> ${fechaLimite || 'No especificada'}</li>        
         <li><b>Nivel de riesgo:</b> ${data.nivelRiesgo || 'No especificado'}</li>
       </ul>
       <p>Por favor, revise la aplicación de reportes ESIN.</p>
@@ -110,13 +130,20 @@ async function enviarCorreoVencido(responsableEmail, descripcion, fechaLimite, r
   });
 }
 
-// Programa la tarea a las 8:00 AM todos los días
-cron.schedule('30 22 * * *', () => {
-  console.log('Ejecutando revisión de reportes vencidos...');
+// Programa la tarea para cambiar estado
+cron.schedule('05 9 * * *', () => {
+  console.log('Ejecutando actualización de estados de reportes vencidos...');
+  actualizarEstadosVencidos().catch(console.error);
+});
+
+// Programa la tarea para enviar correos
+cron.schedule('07 9 * * *', () => {
+  console.log('Ejecutando revisión de reportes vencidos para envío de correos...');
   revisarYEnviarCorreos().catch(console.error);
 });
 
-// También puedes ejecutarlo manualmente al iniciar
+// También puedes ejecutarlas manualmente al iniciar (opcional)
+actualizarEstadosVencidos().catch(console.error);
 revisarYEnviarCorreos().catch(console.error);
 
 const app = express();
