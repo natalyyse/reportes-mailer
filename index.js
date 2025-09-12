@@ -137,7 +137,7 @@ cron.schedule('38 9 * * *', () => {
 });
 
 // Programa la tarea para enviar correos
-cron.schedule('40 9 * * *', () => {
+cron.schedule('39 9 * * *', () => {
   console.log('Ejecutando revisión de reportes vencidos para envío de correos...');
   revisarYEnviarCorreos().catch(console.error);
 });
